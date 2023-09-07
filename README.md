@@ -2,5 +2,5 @@
 
 ```shell
 # Cargo.toml
-rmsg = { git = "git@github.com:qmaru/rmsg" }
+rmsg = { git = "https://github.com/qmaru/rmsg.git" }
 ```
