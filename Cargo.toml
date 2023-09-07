@@ -6,11 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.11", features = ["blocking", "json"] }
-tokio = { version = "1", features = ["full"] }
-clap = { version = "3.2.8", features = ["derive", "yaml"] }
+ureq = { version = "*", features = ["json", "charset"] }
+clap = { version = "2", default-features = false }
 serde_json = "1.0"
-
-[profile.release]
-lto = true
-opt-level = 'z'

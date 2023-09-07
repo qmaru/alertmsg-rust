@@ -1,140 +1,126 @@
-pub trait SendMethod {
-    fn send_text(&self) -> Result<serde_json::Value, reqwest::Error>;
-    fn send_markdown(&self) -> Result<serde_json::Value, reqwest::Error>;
+use super::http::fast_post;
+use serde_json::{json, Value};
+
+pub trait BotMethod {
+    fn send_message(&self, message: Value);
 }
 
-pub mod telegram {
-    use super::SendMethod;
-    use crate::utils::http::minireq;
-    use serde_json::{json, Value};
+pub struct Telegram {
+    pub webhook: String,
+}
+pub struct Dingtalk {
+    pub webhook: String,
+    pub keyword: String,
+}
 
-    pub struct Message {
-        pub webhook: String,
-        pub message: String,
-        pub chat_id: String,
+impl BotMethod for Telegram {
+    fn send_message(&self, message: Value) {
+        let url = format!("{}/sendMessage", self.webhook);
+        let result = fast_post(&url, message);
+        match result {
+            Ok(resp) => {
+                let okcode = resp.get("ok");
+                if let Some(okcode) = okcode {
+                    let ok = okcode.as_bool();
+                    if let Some(ok) = ok {
+                        if ok {
+                            println!("发送成功");
+                        } else {
+                            println!("发送失败: {}", resp);
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+            }
+        }
     }
+}
 
-    fn make_post_url(url: &String) -> String {
-        let post_url = format!("{}/sendMessage", url);
-        post_url
-    }
-
-    fn make_body(chat_id: &String, text: &String, is_markdown: bool) -> Value {
-        let mut post_body = json!({
+impl Telegram {
+    pub fn make_message(&self, message: String, chat_id: String, is_markdown: bool) -> Value {
+        let mut text = json!({
             "chat_id": chat_id,
-            "text": text,
+            "text": message,
         });
 
         if is_markdown {
-            post_body["parse_mode"] = Value::String("MarkdownV2".to_string());
+            text["parse_mode"] = Value::String("MarkdownV2".to_string());
         }
-        post_body
+        text
     }
+}
 
-    fn make_request(post_url: String, post_body: Value) -> Result<Value, reqwest::Error> {
-        let post_res = minireq::post(&post_url, &post_body);
-        match post_res {
-            Ok(result) => {
-                let ok = &result["ok"].as_bool();
-                if let Some(true) = ok {
-                    return Ok(result);
+impl BotMethod for Dingtalk {
+    fn send_message(&self, message: Value) {
+        let result = fast_post(&self.webhook, message);
+
+        match result {
+            Ok(resp) => {
+                let errcode = resp.get("errcode");
+                if let Some(errcode) = errcode {
+                    let code = errcode.as_i64();
+                    if let Some(code) = code {
+                        if code == 0 {
+                            println!("发送成功");
+                        } else {
+                            let errmsg = resp.get("errmsg");
+                            if let Some(errmsg) = errmsg {
+                                let msg = errmsg.as_str();
+                                if let Some(msg) = msg {
+                                    println!("发送失败: {code} / {msg}");
+                                }
+                            }
+                        }
+                    }
                 }
-                let description = &result["description"];
-                panic!("{description}");
             }
-            Err(err) => panic!("{err}"),
-        }
-    }
-
-    impl SendMethod for Message {
-        fn send_text(&self) -> Result<Value, reqwest::Error> {
-            let post_url = make_post_url(&self.webhook);
-            let post_body = make_body(&self.chat_id, &self.message, false);
-            let post_result = make_request(post_url, post_body)?;
-            Ok(post_result)
-        }
-
-        fn send_markdown(&self) -> Result<Value, reqwest::Error> {
-            let post_url = make_post_url(&self.webhook);
-            let post_body = make_body(&self.chat_id, &self.message, true);
-            let post_result = make_request(post_url, post_body)?;
-            Ok(post_result)
+            Err(error) => {
+                eprintln!("{}", error)
+            }
         }
     }
 }
 
-pub mod dingtalk {
-    use super::SendMethod;
-    use crate::utils::http::minireq;
-    use serde_json::{json, Value};
+impl Dingtalk {
+    pub fn make_text_message(&self, message: String, at_ids: Vec<String>) -> Value {
+        let mut text = json!({
+            "msgtype": "text",
+            "text": {
+                "content": message
+            },
+        });
 
-    pub struct Message {
-        pub webhook: String,
-        pub keyword: String,
-        pub message: String,
-        pub markdown_title: String,
-        pub at_ids: Vec<String>,
+        if at_ids.len() != 0 {
+            text["at"] = json!({
+                "atUserIds": at_ids,
+                "isAtAll":   false,
+            })
+        }
+        text
     }
 
-    fn make_request(post_url: &String, post_body: Value) -> Result<Value, reqwest::Error> {
-        let post_res = minireq::post(&post_url, &post_body);
-        match post_res {
-            Ok(result) => {
-                let ok = &result["errmsg"].as_str();
-                if let Some("ok") = ok {
-                    return Ok(result);
-                }
-                let description = &result["errmsg"];
-                panic!("{description}");
-            }
-            Err(err) => panic!("{err}"),
+    pub fn make_markdown_message(
+        &self,
+        markdown_title: String,
+        message: String,
+        at_ids: Vec<String>,
+    ) -> Value {
+        let mut markdown = json!({
+            "msgtype": "markdown",
+            "markdown": {
+                "title": markdown_title,
+                "text": message
+            },
+        });
+
+        if at_ids.len() != 0 {
+            markdown["at"] = json!({
+                "atUserIds": at_ids,
+                "isAtAll":   false,
+            })
         }
-    }
-
-    impl SendMethod for Message {
-        fn send_text(&self) -> Result<Value, reqwest::Error> {
-            let post_message = format!("{}\n{}", &self.keyword, &self.message);
-            let post_url = &self.webhook;
-            let mut post_body = json!({
-                "msgtype": "text",
-                "text": {
-                    "content": post_message
-                },
-            });
-
-            let id_len = &self.at_ids.len();
-            if *id_len > 0 {
-                post_body["at"] = json!({
-                    "atUserIds": &self.at_ids,
-                    "isAtAll":   false,
-                })
-            }
-
-            let post_res = make_request(post_url, post_body)?;
-            Ok(post_res)
-        }
-
-        fn send_markdown(&self) -> Result<Value, reqwest::Error> {
-            let post_marktitle = format!("{}\n{}", &self.markdown_title, &self.keyword);
-            let post_url = &self.webhook;
-            let mut post_body = json!({
-                "msgtype": "markdown",
-                "markdown": {
-                    "title": post_marktitle,
-                    "text": &self.message
-                },
-            });
-
-            let id_len = &self.at_ids.len();
-            if *id_len > 0 {
-                post_body["at"] = json!({
-                    "atUserIds": &self.at_ids,
-                    "isAtAll":   false,
-                })
-            }
-
-            let post_res = make_request(post_url, post_body)?;
-            Ok(post_res)
-        }
+        markdown
     }
 }

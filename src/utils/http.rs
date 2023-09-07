@@ -1,28 +1,12 @@
-pub mod minireq {
-    use reqwest::blocking::Client;
-    use reqwest::header::{HeaderMap, HeaderValue};
-    use serde_json::Value;
+use std::error::Error;
 
-    fn default_header() -> HeaderMap {
-        let header_value = "VicMessage-rust";
-        let mut h = HeaderMap::new();
-        h.insert("User-Agent", HeaderValue::from_static(header_value));
-        h
-    }
+use serde_json::{json, Value};
 
-    fn client() -> reqwest::blocking::Client {
-        let client = Client::builder().default_headers(default_header()).build();
-
-        match client {
-            Ok(client) => client,
-            Err(err) => panic!("HTTP Client Error: {err}"),
-        }
-    }
-
-    pub fn post(url: &String, body: &Value) -> Result<Value, reqwest::Error> {
-        let client = client();
-        let response = client.post(url).json(&body).send()?;
-        let body = response.json::<Value>()?;
-        Ok(body)
-    }
+pub fn fast_post(url: &str, data: Value) -> Result<Value, Box<dyn Error>> {
+    let resp: Value = ureq::post(url)
+        .set("User-Agent", "alertmsg")
+        .set("Content-Type", "application/json")
+        .send_json(json!(data))?
+        .into_json()?;
+    Ok(resp)
 }

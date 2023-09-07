@@ -1,80 +1,70 @@
-pub mod build {
-    use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand};
 
-    const APP_NAME: &str = "alertmsg-rust";
-    const APP_VERSION: &str = "1.0.0";
-    const APP_ABOUT: &str = "Telegram & Dingtalk Message Sender";
+pub struct CommandLine {
+    name: String,
+    version: String,
+    about: String,
+}
 
-    pub fn create() -> App<'static> {
-        let app_cli = App::new(APP_NAME)
-            .version(APP_VERSION)
-            .about(APP_ABOUT)
+impl CommandLine {
+    pub fn new(name: String, version: String, about: String) -> CommandLine {
+        CommandLine {
+            name,
+            version,
+            about,
+        }
+    }
+
+    pub fn create<'a, 'b>(&'a self) -> App<'a, 'b> {
+        App::new(&self.name)
+            .version(&*self.version)
+            .about(&*self.about)
             .setting(AppSettings::ArgRequiredElseHelp)
             .subcommand(
                 SubCommand::with_name("telegram")
-                    .about("Telegram Message")
-                    .arg(
-                        Arg::with_name("webhook_url")
-                            .short('u')
-                            .long("url")
-                            .takes_value(true)
-                            .required(true)
-                            .help("Webhook URL"),
-                    )
+                    .about("Send Message By Telegram")
                     .arg(
                         Arg::with_name("message")
-                            .short('m')
+                            .short("m")
                             .long("message")
                             .takes_value(true)
                             .required(true)
-                            .help("Message Text"),
+                            .help("Telegram Message"),
                     )
                     .arg(
-                        Arg::with_name("chat_id")
-                            .short('i')
-                            .long("id")
-                            .allow_hyphen_values(true)
-                            .takes_value(true)
-                            .required(true)
-                            .help("Chat ID"),
+                        Arg::with_name("markdown")
+                            .takes_value(false)
+                            .long("markdown")
+                            .help("Use Markdown"),
                     ),
             )
             .subcommand(
                 SubCommand::with_name("dingtalk")
-                    .about("Dingtalk Message")
-                    .arg(
-                        Arg::with_name("webhook_url")
-                            .short('u')
-                            .long("url")
-                            .takes_value(true)
-                            .required(true)
-                            .help("Webhook URL"),
-                    )
+                    .about("Send Message By DingTalk")
+                    .subcommand(SubCommand::with_name("users").about("list user"))
                     .arg(
                         Arg::with_name("message")
-                            .short('m')
+                            .short("m")
                             .long("message")
                             .takes_value(true)
-                            .required(true)
-                            .help("Message Text"),
+                            .required(false)
+                            .help("Dingtalk Message"),
                     )
                     .arg(
-                        Arg::with_name("keyword")
-                            .short('k')
-                            .long("kw")
+                        Arg::with_name("title")
                             .takes_value(true)
-                            .required(true)
-                            .help("Keyword"),
+                            .short("t")
+                            .long("title")
+                            .help("Markdown title"),
                     )
                     .arg(
                         Arg::with_name("at")
-                            .short('a')
+                            .short("a")
                             .long("at")
-                            .allow_hyphen_values(true)
                             .takes_value(true)
-                            .help("At someone by user_id"),
+                            .required(false)
+                            .help("@someone (Bob,Alice,...)"),
                     ),
-            );
-        app_cli
+            )
     }
 }
