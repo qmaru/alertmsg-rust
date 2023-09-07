@@ -1,5 +1,6 @@
-# alertmsg-rust
+# rmsg
 
 ```shell
-cargo build --release
+# Cargo.toml
+rmsg = { git = "git@github.com:qmaru/rmsg" }
 ```

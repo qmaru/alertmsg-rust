@@ -1,5 +1,5 @@
 [package]
-name = "alertmsg-rust"
+name = "rmsg"
 version = "1.0.0"
 edition = "2021"
 
