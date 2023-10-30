@@ -85,6 +85,10 @@ impl BotMethod for Dingtalk {
 
 impl Dingtalk {
     pub fn make_text_message(&self, message: String, at_ids: Vec<String>) -> Value {
+        let mut message = message;
+        if self.keyword != "" {
+            message = format!("{}\n{}", self.keyword, message);
+        }
         let mut text = json!({
             "msgtype": "text",
             "text": {
@@ -107,6 +111,10 @@ impl Dingtalk {
         message: String,
         at_ids: Vec<String>,
     ) -> Value {
+        let mut markdown_title = markdown_title;
+        if self.keyword != "" {
+            markdown_title = format!("{}\n{}", markdown_title, self.keyword,);
+        }
         let mut markdown = json!({
             "msgtype": "markdown",
             "markdown": {
